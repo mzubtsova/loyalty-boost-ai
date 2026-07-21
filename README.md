@@ -40,12 +40,49 @@ Managing modern customer loyalty programs (like PAR Punchh, Starbucks Rewards, o
 
 ---
 
+## 📐 System Architecture & Data Flow
+
+```mermaid
+flowchart TD
+    App["App.jsx: shared promotion state and tabs"]
+    Planner["PromoPlanner.jsx: business goal, brand, tiers"]
+    Wallet["WalletVisualizer.jsx: editable customer profile and pass preview"]
+    Critique["BehavioralCritique.jsx: psychology scorecards"]
+    Settings["Settings.jsx: browser-stored Gemini key"]
+    Gemini["services/gemini.js: promotion and critique prompts"]
+    LocalStorage["Browser localStorage"]
+    Mock["Mock campaign fallback"]
+    API["Google Gemini API"]
+
+    App --> Planner
+    App --> Wallet
+    App --> Critique
+    App --> Settings
+    Settings --> LocalStorage
+    Planner --> Gemini
+    Gemini --> API
+    Gemini --> Mock
+    Gemini --> Planner
+    Planner --> Critique
+    App --> Wallet
+```
+
+### Component Breakdown
+
+1. **Promotion Planner:** Collects the brand, campaign objective, and eligible loyalty tiers, then requests a promotion plan from Gemini or the built-in mock generator.
+2. **Promotion State:** Stores the active campaign mechanics, copy, Liquid snippets, and behavioral critique in React state.
+3. **Wallet Visualizer:** Renders a simulated mobile loyalty pass and lets the user adjust mock customer details such as tier, points balance, name, and favorite product.
+4. **Behavioral Critique:** Scores loss aversion, participation friction, and fatigue risk from the active campaign mechanics.
+5. **Settings:** Saves an optional Gemini API key in browser `localStorage`; without a key, the app remains usable through demo responses.
+
+---
+
 ## 💻 Tech Stack
 
 * **Framework**: React (Vite SPA)
 * **Styling**: Vanilla CSS3 Custom Design System (HSL tokens, mobile phone mockup visual wraps, tier color gradients, hover transitions)
 * **Icons**: Lucide React
-* **AI Engine**: Google Gemini API (`gemini-3.5-flash` model via HTTP POST client-side calls)
+* **AI Engine**: Google Gemini API (`gemini-2.5-flash` model via HTTP POST client-side calls)
 
 ---
 

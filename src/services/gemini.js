@@ -3,7 +3,7 @@
  * Includes exponential backoff and mock responders.
  */
 
-const MODEL_NAME = 'gemini-3.5-flash';
+const MODEL_NAME = 'gemini-2.5-flash';
 
 function cleanAndParseJSON(text) {
   try {
