@@ -723,6 +723,11 @@ input:focus, textarea:focus, select:focus {
 }
 
 @media (max-width: 520px) {
+  .app-shell, .sidebar, .main-content {
+    width: 100%;
+    max-width: 390px;
+  }
+
   .main-content {
     padding: 14px;
   }
@@ -733,6 +738,7 @@ input:focus, textarea:focus, select:focus {
 
   .topbar h1 {
     font-size: 24px;
+    max-width: 330px;
   }
 
   .topbar-actions {
