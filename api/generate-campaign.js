@@ -50,7 +50,11 @@ export default async function handler(request, response) {
 }
 
 function buildPrompt(input) {
+  const today = new Date().toISOString().slice(0, 10);
+
   return `Create one production-ready loyalty campaign.
+
+Today is ${today}. Do not use campaign dates before today. If you include calendar dates, choose realistic future dates. If exact dates are not necessary, use relative operational windows such as "next four weekdays" or "Monday-Friday, 2:00 PM-5:00 PM".
 
 Input:
 - Brand: ${input.brandName || 'Brand'}
