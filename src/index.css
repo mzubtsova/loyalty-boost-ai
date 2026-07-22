@@ -23,6 +23,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
+  overflow-x: hidden;
 }
 
 button, input, textarea, select {
@@ -137,6 +138,7 @@ button {
   margin: 4px 0 6px;
   font-size: clamp(26px, 4vw, 42px);
   line-height: 1.08;
+  overflow-wrap: anywhere;
 }
 
 .topbar p {
@@ -162,6 +164,7 @@ button {
   gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
+  min-width: 0;
 }
 
 .panel {
@@ -206,6 +209,7 @@ button {
   background: var(--surface);
   color: var(--ink);
   padding: 9px 13px;
+  min-width: 0;
 }
 
 .icon-button {
@@ -513,6 +517,10 @@ input:focus, textarea:focus, select:focus {
   gap: 12px;
 }
 
+.compact-card .metric-grid {
+  grid-template-columns: 1fr;
+}
+
 .metric-card {
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -526,6 +534,11 @@ input:focus, textarea:focus, select:focus {
   gap: 8px;
   margin-bottom: 10px;
   font-weight: 800;
+}
+
+.metric-header span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .metric-card p {
@@ -693,8 +706,15 @@ input:focus, textarea:focus, select:focus {
     padding: 15px;
   }
 
+  .topbar-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr);
+  }
+
   .topbar-actions .btn {
-    flex: 1;
+    width: 100%;
+    padding-inline: 9px;
   }
 
   .brand-mark {
