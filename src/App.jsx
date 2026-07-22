@@ -1,121 +1,193 @@
-import React, { useState, useEffect } from 'react';
-import { Sparkles, Trophy, Settings as SettingsIcon, Check } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { BarChart3, ClipboardCheck, Database, Download, LayoutDashboard, Plus, Settings, Sparkles, Trophy } from 'lucide-react';
 import PromoPlanner from './components/PromoPlanner';
-import Settings from './components/Settings';
+import WalletVisualizer from './components/WalletVisualizer';
+import BehavioralCritique from './components/BehavioralCritique';
+import SettingsPanel from './components/Settings';
+import { buildExportBundle, loadWorkspace, normalizeCampaign, saveWorkspace, scoreCampaign, validateCampaign } from './services/campaignEngine';
 
-const DEFAULT_PLAN = {
-  campaignName: "Afternoon Espresso Double Star Rush",
-  tagline: "Double stars. Infinite afternoon vibes.",
-  pointsMultiplier: 2,
-  mechanicsDetail: "Earn 2x Stars on any Espresso, Latte, or Macchiato purchase made between 2:00 PM and 5:00 PM, Monday through Thursday. Exclusive to Silver and Gold members. Stars will auto-credit to your account wallet within 1 hour of scanning your app barcode.",
-  pushNotification: "🕒 Double Star Rush! Hey {{ user.first_name | default: 'coffee lover' }}, get 2x Stars on lattes from 2-5 PM today!",
-  emailSubject: "☕ {{ user.first_name | default: 'there' }}, double stars are brewing this afternoon!",
-  inAppMessage: "🌟 AFTERNOON STAR BURST\nEarn double points on all hand-crafted beverages between 2 PM and 5 PM today. Tap to load coupon into wallet.",
-  promoCode: "LATTERUSH"
-};
+const NAV_ITEMS = [
+  { id: 'workspace', label: 'Workspace', icon: LayoutDashboard },
+  { id: 'wallet', label: 'Wallet QA', icon: Trophy },
+  { id: 'audit', label: 'Risk Audit', icon: ClipboardCheck },
+  { id: 'exports', label: 'Exports', icon: Download },
+  { id: 'settings', label: 'Settings', icon: Settings },
+];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('planner');
-  const [apiKey, setApiKey] = useState('');
+  const [workspace, setWorkspace] = useState(() => loadWorkspace());
+  const [activeTab, setActiveTab] = useState('workspace');
   const [toast, setToast] = useState('');
-  
-  // Shared state holding active loyalty promotion details
-  const [promoPlan, setPromoPlan] = useState(DEFAULT_PLAN);
 
-  // Load API Key on mount
+  const activeCampaign = useMemo(
+    () => workspace.campaigns.find((campaign) => campaign.id === workspace.activeCampaignId) || workspace.campaigns[0],
+    [workspace],
+  );
+
+  const score = useMemo(() => scoreCampaign(activeCampaign), [activeCampaign]);
+  const validation = useMemo(() => validateCampaign(activeCampaign), [activeCampaign]);
+  const exportBundle = useMemo(() => buildExportBundle(activeCampaign), [activeCampaign]);
+
   useEffect(() => {
-    const savedKey = localStorage.getItem('gemini_api_key') || '';
-    setApiKey(savedKey);
-  }, []);
+    saveWorkspace(workspace);
+  }, [workspace]);
 
-  const triggerToast = (message) => {
+  const updateWorkspace = (updater) => {
+    setWorkspace((current) => {
+      const next = typeof updater === 'function' ? updater(current) : updater;
+      return next;
+    });
+  };
+
+  const upsertCampaign = (campaign) => {
+    const normalized = normalizeCampaign(campaign);
+    updateWorkspace((current) => {
+      const exists = current.campaigns.some((item) => item.id === normalized.id);
+      return {
+        activeCampaignId: normalized.id,
+        campaigns: exists
+          ? current.campaigns.map((item) => (item.id === normalized.id ? normalized : item))
+          : [normalized, ...current.campaigns],
+      };
+    });
+  };
+
+  const updateActiveCampaign = (patch) => {
+    updateWorkspace((current) => ({
+      ...current,
+      campaigns: current.campaigns.map((campaign) => (
+        campaign.id === current.activeCampaignId
+          ? normalizeCampaign({ ...campaign, ...patch, id: campaign.id, createdAt: campaign.createdAt })
+          : campaign
+      )),
+    }));
+  };
+
+  const duplicateCampaign = () => {
+    upsertCampaign({
+      ...activeCampaign,
+      id: undefined,
+      status: 'draft',
+      campaignName: `${activeCampaign.campaignName} Copy`,
+      createdAt: undefined,
+    });
+    showToast('Campaign duplicated');
+  };
+
+  const showToast = (message) => {
     setToast(message);
-    setTimeout(() => setToast(''), 2500);
+    window.setTimeout(() => setToast(''), 2400);
   };
 
-  const getHeaderDetails = () => {
-    switch (activeTab) {
-      case 'planner':
-        return { title: 'Loyalty & Promotion Planner', desc: 'Design rewards mechanics and preview customer experience in real-time' };
-      case 'settings':
-        return { title: 'Settings', desc: 'Configure API connections' };
-      default:
-        return { title: 'LoyaltyBoost AI', desc: 'CRM Promotion Copilot' };
-    }
+  const copyExport = async () => {
+    await navigator.clipboard.writeText(JSON.stringify(exportBundle, null, 2));
+    showToast('Export bundle copied');
   };
 
-  const { title, desc } = getHeaderDetails();
+  const downloadExport = () => {
+    const blob = new Blob([JSON.stringify(exportBundle, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `${activeCampaign.campaignName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-export.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const ActiveIcon = NAV_ITEMS.find((item) => item.id === activeTab)?.icon || LayoutDashboard;
 
   return (
-    <div className="app-container">
-      {/* Sidebar Navigation */}
-      <nav className="sidebar">
-        <div className="sidebar-logo">
-          <div className="sidebar-logo-icon">
-            <Trophy size={16} />
-          </div>
-          <span className="sidebar-logo-text">LoyaltyBoost AI</span>
-        </div>
-
-        <div className="sidebar-menu">
-          <button
-            onClick={() => setActiveTab('planner')}
-            className={`sidebar-item ${activeTab === 'planner' ? 'active' : ''}`}
-          >
-            <Trophy size={18} />
-            Promo Planner
-          </button>
-        </div>
-
-        <div className="sidebar-footer">
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`sidebar-item ${activeTab === 'settings' ? 'active' : ''}`}
-            style={{ width: '100%' }}
-          >
-            <SettingsIcon size={18} />
-            Settings
-          </button>
-        </div>
-      </nav>
-
-      {/* Main Content Area */}
-      <main className="main-content">
-        <header className="header">
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand-mark">
+          <div className="brand-icon"><Trophy size={18} /></div>
           <div>
-            <h1>{title}</h1>
-            <p className="header-title-desc">{desc}</p>
+            <strong>LoyaltyBoost AI</strong>
+            <span>Promotion OS</span>
           </div>
+        </div>
 
-          <div className={`api-badge ${apiKey ? 'connected' : 'simulated'}`}>
-            <span className="indicator"></span>
-            <span>{apiKey ? 'Live AI Mode' : 'Simulated Mock Mode'}</span>
+        <nav className="nav-list" aria-label="Main navigation">
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+                onClick={() => setActiveTab(item.id)}
+              >
+                <Icon size={18} />
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="sidebar-card">
+          <span>Readiness</span>
+          <strong>{validation.score}%</strong>
+          <div className="mini-meter"><span style={{ width: `${validation.score}%` }} /></div>
+        </div>
+      </aside>
+
+      <main className="main-content">
+        <header className="topbar">
+          <div>
+            <p className="eyebrow"><ActiveIcon size={14} /> {activeCampaign.status} campaign</p>
+            <h1>{activeCampaign.campaignName}</h1>
+            <p>{activeCampaign.brandName} - {activeCampaign.businessGoal}</p>
+          </div>
+          <div className="topbar-actions">
+            <button className="icon-button" onClick={duplicateCampaign} title="Duplicate campaign">
+              <Plus size={18} />
+            </button>
+            <button className="btn btn-secondary" onClick={copyExport}>
+              <Database size={16} /> Copy JSON
+            </button>
+            <button className="btn btn-primary" onClick={downloadExport}>
+              <Download size={16} /> Export
+            </button>
           </div>
         </header>
 
-        {/* Content Render */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          {activeTab === 'planner' ? (
+        {activeTab === 'workspace' && (
+          <section className="workspace-grid">
             <PromoPlanner
-              apiKey={apiKey}
-              promoPlan={promoPlan}
-              setPromoPlan={setPromoPlan}
-              triggerToast={triggerToast}
+              activeCampaign={activeCampaign}
+              campaigns={workspace.campaigns}
+              setActiveCampaignId={(id) => updateWorkspace((current) => ({ ...current, activeCampaignId: id }))}
+              upsertCampaign={upsertCampaign}
+              updateActiveCampaign={updateActiveCampaign}
+              showToast={showToast}
             />
-          ) : (
-            <Settings
-              apiKey={apiKey}
-              setApiKey={setApiKey}
-            />
-          )}
-        </div>
+            <div className="stack">
+              <BehavioralCritique score={score} validation={validation} compact />
+              <WalletVisualizer campaign={activeCampaign} compact />
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'wallet' && <WalletVisualizer campaign={activeCampaign} />}
+        {activeTab === 'audit' && <BehavioralCritique score={score} validation={validation} />}
+        {activeTab === 'exports' && (
+          <section className="panel exports-panel">
+            <div className="section-title">
+              <BarChart3 size={18} />
+              <div>
+                <h2>Activation Export Bundle</h2>
+                <p>CRM payload, wallet pass brief, campaign object, and analytics events.</p>
+              </div>
+            </div>
+            <pre>{JSON.stringify(exportBundle, null, 2)}</pre>
+          </section>
+        )}
+        {activeTab === 'settings' && <SettingsPanel validation={validation} />}
       </main>
 
-      {/* Global Toast */}
       {toast && (
         <div className="toast">
-          <Check size={16} />
-          <span>{toast}</span>
+          <Sparkles size={16} />
+          {toast}
         </div>
       )}
     </div>

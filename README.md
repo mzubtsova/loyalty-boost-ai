@@ -1,108 +1,172 @@
-# LoyaltyBoost AI 🏆
-> **An AI-powered CRM dashboard to plan loyalty promotions, visualize digital wallet pass customer experiences, and audit campaign mechanics against behavioral psychology scores.**
+# LoyaltyBoost AI
 
-LoyaltyBoost AI is an interactive web platform designed for loyalty program managers, CRM strategists, and marketing technologists. It helps bridge the gap between business objectives (e.g., *"increase weekday afternoon sales"*) and loyalty structures (e.g., points multipliers, tier-based challenges) by generating optimized reward mechanics, simulating the visual experience on a digital wallet pass, and auditing customer friction and fatigue pre-deployment.
+**LoyaltyBoost AI is a production-shaped promotion workspace for loyalty and CRM teams.** It helps marketers draft margin-aware loyalty campaigns, validate launch readiness, preview wallet-pass customer experiences, and export activation payloads for CRM and wallet implementation.
 
----
+Live site: https://loyalty-boost-ai.vercel.app/
 
-## 🛠️ The Problem It Solves
+## What Changed
 
-Managing modern customer loyalty programs (like PAR Punchh, Starbucks Rewards, or Sephora Beauty Insider) involves key complexities:
-1. **Structuring Promos**: Designing multipliers (e.g. 2x, 3x points) or entry gates that match business goals without causing margin erosion can be challenging.
-2. **Personalization & QA Visuals**: Visualizing what the promotion will look like inside a customer's digital wallet app (Apple Wallet or Google Pay) usually requires extensive manual mockup drafting.
-3. **Behavioral Economics Auditing**: It's hard to predict if an offer will cause friction, trigger customer fatigue, or leverage psychological drivers like Loss Aversion (FOMO) before spending campaign budget.
+The project has moved beyond a presentation-only AI demo. It now includes:
 
-**LoyaltyBoost AI** provides an interactive, client-side QA and design portal to automate and validate this entire planning pipeline.
+- A campaign workspace with saved drafts in browser storage.
+- A structured campaign schema for mechanics, tiers, budget, channels, legal copy, frequency caps, and launch status.
+- A Vercel serverless AI endpoint at `api/generate-campaign.js`, so production AI keys are not stored in the browser.
+- Deterministic fallback campaign generation when `GEMINI_API_KEY` is not configured.
+- Deterministic launch-readiness and risk scoring for urgency, friction, fatigue, and margin exposure.
+- Wallet pass QA with customer-variable substitution and barcode preview.
+- CRM and wallet export bundle generation.
+- Responsive SaaS-style UI for desktop, tablet, and phone layouts.
+- Clean production build and lint checks.
 
----
+## Core Product Surfaces
 
-## ✨ Core Features
+### Campaign Workspace
 
-### 1. AI Promotion Planner
-* **Goal-oriented Mechanics**: Input your brand name and campaign objective. Select which loyalty tiers are eligible (Bronze, Silver, Gold, Standard).
-* **Automated Logic Drafting**: Gemini automatically designs custom point multipliers, visual taglines, and marketing copy (Email subject, Push notifications, In-app messaging) containing Liquid tags.
-* **Pre-baked Demo Mode**: If no API key is saved, the app runs on a simulated engine pre-seeded with Starbucks/Coffee Double-Star afternoon campaigns for easy presentation.
+Create and edit loyalty campaigns with:
 
-### 2. Smartphone Wallet Visualizer
-* **Interactive Mobile Mockup**: Renders a simulated iOS/Android smartphone screen displaying a digital rewards pass.
-* **Live Dynamic Tiers**: The pass visual layout and card background gradient automatically shift colors depending on the customer's active tier (Bronze, Silver, Gold, or Standard).
-* **Profile Barcode Simulator**: Marketers can edit mock user parameters (Name, Points Balance, Tier, and Favorite Drink/Product) to immediately preview how the progress bar and personalized notifications adapt.
-* **Liquid Personalization QA**: Substitutes active customer variables directly inside the push notifications and email subject lines in real time.
+- Brand and business objective.
+- Eligible loyalty tiers.
+- Campaign channels.
+- Budget cap and projected margin impact.
+- Active window.
+- Redemption method.
+- Frequency cap.
+- Promo code.
+- Legal copy and exclusions.
+- Draft, review, approved, and ready statuses.
 
-### 3. Behavioral Economics Critique
-* **Loss Aversion Audit (Urgency & FOMO)**: Scores how well the campaign uses scarcity and time-boxed rules.
-* **Participation Friction Audit (Usability)**: Evaluates checkout delay and registration ease.
-* **Fatigue Risk Audit (Margin Protection)**: Scores whether the campaign runs risk of oversaturating the list.
-* **Actionable Psychology Copy**: Displays color-coded progress bars (Green/Amber/Red) and written critique from a virtual behavioral economist to optimize offer mechanics.
+Campaigns autosave to local workspace storage so users can return to drafts without losing work.
 
-### 4. Shared Settings Portal
-* **Shared Gemini Credentials**: Uses the same API Key storage key as our sister project, **SmartCanvas AI**. Saving your key in one app automatically unlocks live generation in the other!
+### AI Campaign Drafting
 
----
+The frontend calls:
 
-## 📐 System Architecture & Data Flow
+```text
+POST /api/generate-campaign
+```
+
+In production, the serverless function uses `process.env.GEMINI_API_KEY`. If no key is configured, the client falls back to the deterministic campaign engine, keeping the app usable for demos and QA.
+
+### Production Risk Audit
+
+The app scores every active campaign across:
+
+- Urgency and loss aversion.
+- Redemption friction.
+- Fatigue protection.
+- Margin guardrail.
+- Launch readiness.
+
+The readiness checklist checks campaign name, eligibility, economics, redemption clarity, legal/exclusions, and channel copy completeness.
+
+### Wallet Pass QA
+
+The wallet preview simulates:
+
+- Pass title and campaign status.
+- Loyalty tier.
+- Points balance.
+- Barcode / promo-code activation.
+- Resolved push notification.
+- Resolved email subject.
+- Liquid-style personalization such as `{{ user.first_name | default: 'there' }}`.
+
+### Export Bundle
+
+The export view produces JSON containing:
+
+- Full campaign object.
+- CRM activation payload shaped for systems like Braze, Iterable, Klaviyo, or Salesforce Marketing Cloud.
+- Wallet pass implementation brief.
+- Suggested analytics events.
+
+## Architecture
 
 ```mermaid
 flowchart TD
-    App["App.jsx: shared promotion state and tabs"]
-    Planner["PromoPlanner.jsx: business goal, brand, tiers"]
-    Wallet["WalletVisualizer.jsx: editable customer profile and pass preview"]
-    Critique["BehavioralCritique.jsx: psychology scorecards"]
-    Settings["Settings.jsx: browser-stored Gemini key"]
-    Gemini["services/gemini.js: promotion and critique prompts"]
-    LocalStorage["Browser localStorage"]
-    Mock["Mock campaign fallback"]
-    API["Google Gemini API"]
+    User["CRM / loyalty marketer"]
+    App["React workspace UI"]
+    Engine["campaignEngine.js"]
+    Storage["Browser workspace storage"]
+    API["Vercel serverless API"]
+    Gemini["Gemini API"]
+    Audit["Deterministic risk audit"]
+    Wallet["Wallet QA preview"]
+    Export["CRM + wallet export bundle"]
 
-    App --> Planner
-    App --> Wallet
-    App --> Critique
-    App --> Settings
-    Settings --> LocalStorage
-    Planner --> Gemini
-    Gemini --> API
-    Gemini --> Mock
-    Gemini --> Planner
-    Planner --> Critique
-    App --> Wallet
+    User --> App
+    App --> Engine
+    Engine --> Storage
+    App --> API
+    API --> Gemini
+    API --> App
+    Engine --> Audit
+    Engine --> Wallet
+    Engine --> Export
 ```
 
-### Component Breakdown
+## Production Configuration
 
-1. **Promotion Planner:** Collects the brand, campaign objective, and eligible loyalty tiers, then requests a promotion plan from Gemini or the built-in mock generator.
-2. **Promotion State:** Stores the active campaign mechanics, copy, Liquid snippets, and behavioral critique in React state.
-3. **Wallet Visualizer:** Renders a simulated mobile loyalty pass and lets the user adjust mock customer details such as tier, points balance, name, and favorite product.
-4. **Behavioral Critique:** Scores loss aversion, participation friction, and fatigue risk from the active campaign mechanics.
-5. **Settings:** Saves an optional Gemini API key in browser `localStorage`; without a key, the app remains usable through demo responses.
+Set this environment variable in Vercel:
 
----
+```bash
+GEMINI_API_KEY=your_server_side_key
+```
 
-## 💻 Tech Stack
+No user API key is required in the browser.
 
-* **Framework**: React (Vite SPA)
-* **Styling**: Vanilla CSS3 Custom Design System (HSL tokens, mobile phone mockup visual wraps, tier color gradients, hover transitions)
-* **Icons**: Lucide React
-* **AI Engine**: Google Gemini API (`gemini-2.5-flash` model via HTTP POST client-side calls)
+## Development
 
----
+```bash
+npm install
+npm run dev
+npm run lint
+npm run build
+```
 
-## 🚀 Getting Started
+## Verification
 
-### Installation
+Current checks:
 
-1. Navigate to the project directory:
-   ```bash
-   cd loyalty-boost-ai
-   ```
+```bash
+npm run lint
+npm run build
+```
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+Both pass on the updated codebase.
 
-3. Run the development server:
-   ```bash
-   npm run dev
-   ```
+## Tech Stack
 
-4. Open the development link printed in your terminal (typically [http://localhost:5173](http://localhost:5173) or [http://localhost:5174](http://localhost:5174)).
+- React 18
+- Vite
+- Vercel serverless functions
+- Lucide React icons
+- Vanilla CSS design system
+- Gemini API via serverless route
+
+## What Is Real Now
+
+This is now a credible MVP shell:
+
+- Campaigns are structured and editable.
+- Drafts persist locally.
+- AI calls are server-side.
+- The app can operate without AI configuration.
+- Readiness scoring is deterministic and inspectable.
+- Exports are shaped for real CRM and wallet activation work.
+- The layout is responsive.
+
+## Next Integrations
+
+The next production milestones are:
+
+- Organization accounts and role-based approvals.
+- Hosted database persistence with Supabase, Postgres, Firebase, or similar.
+- OAuth integrations for Braze, Iterable, Klaviyo, Salesforce Marketing Cloud, or Segment.
+- Apple Wallet `.pkpass` generation and Google Wallet pass object creation.
+- Historical redemption data ingestion for ROI prediction and offer-fatigue modeling.
+- Audit logs, billing, rate limits, and admin controls.
+
+## Portfolio Summary
+
+LoyaltyBoost AI is a loyalty promotion operating system prototype that turns a business goal into a structured campaign, validates the promotion against margin and behavior guardrails, previews the wallet-pass customer experience, and exports CRM-ready activation data. It demonstrates product strategy, AI workflow design, frontend engineering, serverless architecture, and production-readiness thinking.
